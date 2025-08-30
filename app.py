@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from pydantic import Field
 from llama_index.llms.groq import Groq
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from llama_index.core.base.embeddings.base import BaseEmbedding
+from llama_index.readers.file import PyMuPDFReader
 from llama_index.core import Settings
 from llama_index.core import VectorStoreIndex, PromptTemplate, SimpleDirectoryReader
 
@@ -33,35 +33,6 @@ client = None
 @st.cache_resource
 def load_llm():
     return Groq(model="llama-3.3-70b-versatile", api_key=groq_api_key ,request_timeout=120.0)
-
-
-# ==================== Custom Embedding Wrapper ====================
-# class OpenTextEmbedding(BaseEmbedding):
-#     model: str = Field(default="bge-large-en")
-#     api_url: str = Field(default="https://api.opentextembeddings.com/v1")
-
-#     def _get_embedding(self, text):
-#         headers = {"Content-Type": "application/json"}
-#         payload = {"model": self.model, "input": text}
-#         try:
-#             r = requests.post(self.api_url, json=payload, headers=headers, timeout=30)
-#             if r.status_code == 200:
-#                 return r.json()["data"]
-#             else:
-#                 st.error(f"Embedding API error: {r.status_code}, {r.text}")
-#                 return [0.0] * 1024  # fallback vector
-#         except Exception as e:
-#             st.error(f"Embedding request failed: {e}")
-#             return [0.0] * 1024
-
-#     def _get_text_embedding(self, text: str):
-#         return self._get_embedding(text)
-
-#     def _get_query_embedding(self, query: str):
-#         return self._get_embedding(query)
-    
-#     async def _aget_query_embedding(self, query: str):
-#         return self._call_api(query)
 
 
 def reset_chat():
@@ -104,21 +75,11 @@ with st.sidebar:
                 st.write("Indexing your document...")
 
                 if file_key not in st.session_state.get('file_cache', {}):
+                    # Load PDF text using PyMuPDFReader
+                    loader = PyMuPDFReader()
+                    docs = loader.load_data(file_path)  # file_path is the uploaded PDF
 
-                    if(os.path.exists(temp_dir)):
-                        # load data
-                        loader = SimpleDirectoryReader(
-                                    input_dir = temp_dir,
-                                    required_exts = [".pdf"],
-                                    recursive = True
-                                )
-                    else:
-                        st.error("Could not find the uploaded file. Please try again.")
-                        st.stop()
-
-                    docs = loader.load_data()
-
-                    print("DOCS:", docs[0]) 
+                    print("DOCS:", docs[0].text[:500])  # first 500 chars for debug
 
                     # Setup llm and embedding model
                     llm = load_llm()
