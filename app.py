@@ -21,7 +21,7 @@ import streamlit as st
 
 load_dotenv()
 
-groq_api_key = os.getenv("GROQ_API_KEY")
+groq_api_key = st.secrets["GROQ_API_KEY"]
 
 if "id" not in st.session_state:
     st.session_state.id = uuid.uuid4()
