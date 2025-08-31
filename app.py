@@ -7,6 +7,7 @@ import gc
 import time
 import tempfile
 import uuid
+import datetime
 
 from dotenv import load_dotenv
 from pydantic import Field
@@ -17,6 +18,40 @@ from llama_index.core import Settings
 from llama_index.core import VectorStoreIndex, PromptTemplate, SimpleDirectoryReader
 
 import streamlit as st
+import streamlit_authenticator as stauth
+
+# ================== AUTH ==================
+if not st.user.is_logged_in:
+    st.warning("Please log in to continue")
+    if st.button("Log in"):
+        st.login()
+else:
+    st.sidebar.success(f"Logged in as {st.user.name}")
+    if st.button("Log out"):
+        st.logout()
+# ================== END AUTH ==================
+
+# ================== DAILY LIMIT ==================
+DAILY_LIMIT = 5
+today = datetime.date.today()
+
+# Use st.user.name (or st.user.email) as unique identifier
+if st.user.is_logged_in:
+    user_id = st.user.email or st.user.name  # fallback to name if email not available
+
+    if f"usage_{user_id}" not in st.session_state:
+        st.session_state[f"usage_{user_id}"] = {"count": 0, "date": today}
+
+    # Reset count if a new day
+    if st.session_state[f"usage_{user_id}"]["date"] != today:
+        st.session_state[f"usage_{user_id}"] = {"count": 0, "date": today}
+
+    # Check usage before allowing chat
+    if st.session_state[f"usage_{user_id}"]["count"] >= DAILY_LIMIT:
+        st.warning("⚠️ You have reached your daily query limit. Please try again tomorrow.")
+        st.stop()
+
+
 # Load apikey from .env
 
 load_dotenv()
@@ -140,6 +175,16 @@ for message in st.session_state.messages:
 
 # Accept user input
 if prompt := st.chat_input("What's up?"):
+    # check daily quota
+    usage = st.session_state[f"usage_{user_id}"]
+
+    if usage["count"] >= DAILY_LIMIT:
+        st.warning("⚠️ Daily query limit reached. Come back tomorrow.")
+        st.stop()
+    
+    usage["count"]+=1
+    st.session_state[f"usage_{user_id}"] = usage
+    
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
     # Display user message in chat message container
