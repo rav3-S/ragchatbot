@@ -25,10 +25,12 @@ if not st.user.is_logged_in:
     st.warning("Please log in to continue")
     if st.button("Log in"):
         st.login()
+    st.stop()
 else:
     st.sidebar.success(f"Logged in as {st.user.name}")
     if st.button("Log out"):
         st.logout()
+        st.stop()
 # ================== END AUTH ==================
 
 # ================== DAILY LIMIT ==================
@@ -173,6 +175,7 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
+st.sidebar.write(f"📊 Queries used today: {usage['count']}/{DAILY_LIMIT}")
 # Accept user input
 if prompt := st.chat_input("What's up?"):
     # check daily quota
